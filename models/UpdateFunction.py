@@ -48,6 +48,7 @@ class UpdateFunction(nn.Module):
         self.u_definition = update_def.lower()
 
         self.u_function = {
+                    'duvenaud':         self.u_duvenaud,            
                     'intnet':             self.u_intnet,
                     'mpnn':             self.u_mpnn
                 }.get(self.u_definition, None)
@@ -56,6 +57,7 @@ class UpdateFunction(nn.Module):
             print('WARNING!: Update Function has not been set correctly\n\tIncorrect definition ' + update_def)
 
         init_parameters = {
+            'duvenaud':         self.init_duvenaud,            
             'intnet':             self.init_intnet,
             'mpnn':             self.init_mpnn
         }.get(self.u_definition, lambda x: (nn.ParameterList([]), nn.ModuleList([]), {}))
@@ -69,6 +71,36 @@ class UpdateFunction(nn.Module):
     # Get the update function arguments
     def get_args(self):
         return self.args
+    
+    # Duvenaud
+    def u_duvenaud(self, h_v, m_v, opt):
+
+        param_sz = self.learn_args[0][opt['deg']].size()
+        parameter_mat = torch.t(self.learn_args[0][opt['deg']])[None, ...].expand(m_v.size(0), param_sz[1], param_sz[0])
+        
+        #print(parameter_mat.size())
+        #print(m_v.size())
+        #print(torch.transpose(m_v.unsqueeze(-2), 1, 2).size())
+
+        #aux = torch.bmm(parameter_mat, torch.transpose(m_v, 1, 2))
+        aux = torch.bmm(parameter_mat, torch.transpose(m_v.unsqueeze(-2), 1, 2))
+
+        return torch.transpose(torch.nn.Sigmoid()(aux), 1, 2)
+
+    def init_duvenaud(self, params):
+        learn_args = []
+        learn_modules = []
+        args = {}
+
+        # Filter degree 0 (the message will be 0 and therefore there is no update
+        args['deg'] = [i for i in params['deg'] if i!=0]
+        args['in'] = params['in']
+        args['out'] = params['out']
+
+        # Define a parameter matrix H for each degree.
+        learn_args.append(torch.nn.Parameter(torch.randn(len(args['deg']), args['in'], args['out'])))
+
+        return nn.ParameterList(learn_args), nn.ModuleList(learn_modules), args    
 
     # Battaglia et al. (2016), Interaction Networks
     def u_intnet(self, h_v, m_v, opt):

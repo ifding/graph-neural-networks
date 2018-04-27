@@ -43,6 +43,7 @@ class MessageFunction(nn.Module):
         self.m_definition = message_def.lower()
 
         self.m_function = {
+                    'duvenaud':         self.m_duvenaud,
                     'intnet':             self.m_intnet,
                     'mpnn':             self.m_mpnn,
                 }.get(self.m_definition, None)
@@ -52,6 +53,7 @@ class MessageFunction(nn.Module):
             quit()
 
         init_parameters = {
+            'duvenaud': self.init_duvenaud,            
             'intnet':     self.init_intnet,
             'mpnn':     self.init_mpnn
         }.get(self.m_definition, lambda x: (nn.ParameterList([]), nn.ModuleList([]), {}))
@@ -59,6 +61,7 @@ class MessageFunction(nn.Module):
         self.learn_args, self.learn_modules, self.args = init_parameters(args)
 
         self.m_size = {
+                'duvenaud':     self.out_duvenaud,            
                 'intnet':         self.out_intnet,
                 'mpnn':         self.out_mpnn
             }.get(self.m_definition, None)
@@ -74,6 +77,21 @@ class MessageFunction(nn.Module):
     # Get Output size
     def get_out_size(self, size_h, size_e, args=None):
         return self.m_size(size_h, size_e, args)
+    
+    
+    # Duvenaud et al. (2015), Convolutional Networks for Learning Molecular Fingerprints
+    def m_duvenaud(self, h_v, h_w, e_vw, args):
+        m = torch.cat([h_w, e_vw], 2)
+        return m
+
+    def out_duvenaud(self, size_h, size_e, args):
+        return size_h + size_e
+
+    def init_duvenaud(self, params):
+        learn_args = []
+        learn_modules = []
+        args = {}
+        return nn.ParameterList(learn_args), nn.ModuleList(learn_modules), args 
 
     # Battaglia et al. (2016), Interaction Networks
     def m_intnet(self, h_v, h_w, e_vw, args):

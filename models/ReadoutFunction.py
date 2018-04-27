@@ -48,6 +48,7 @@ class ReadoutFunction(nn.Module):
         self.r_definition = readout_def.lower()
 
         self.r_function = {
+                    'duvenaud': self.r_duvenaud,            
                     'intnet':     self.r_intnet,
                     'mpnn':     self.r_mpnn
                 }.get(self.r_definition, None)
@@ -57,6 +58,7 @@ class ReadoutFunction(nn.Module):
             quit()
 
         init_parameters = {
+            'duvenaud': self.init_duvenaud,            
             'intnet':     self.init_intnet,
             'mpnn':     self.init_mpnn
         }.get(self.r_definition, lambda x: (nn.ParameterList([]), nn.ModuleList([]), {}))
@@ -66,6 +68,41 @@ class ReadoutFunction(nn.Module):
     # Get the name of the used readout function
     def get_definition(self):
         return self.r_definition
+
+    # Duvenaud
+    def r_duvenaud(self, h):
+        # layers
+        aux = []
+        for l in range(len(h)):
+            param_sz = self.learn_args[l].size()
+            parameter_mat = torch.t(self.learn_args[l])[None, ...].expand(h[l].size(0), param_sz[1],
+                                                                                      param_sz[0])
+
+            aux.append(torch.transpose(torch.bmm(parameter_mat, torch.transpose(h[l], 1, 2)), 1, 2))
+
+            for j in range(0, aux[l].size(1)):
+                # Mask whole 0 vectors
+                aux[l][:, j, :] = nn.Softmax()(aux[l][:, j, :].clone())*(torch.sum(aux[l][:, j, :] != 0, 1) > 0)[...,None].expand_as(aux[l][:, j, :]).type_as(aux[l])
+
+        aux = torch.sum(torch.sum(torch.stack(aux, 3), 3), 1)
+        return self.learn_modules[0](torch.squeeze(aux))
+
+    def init_duvenaud(self, params):
+        learn_args = []
+        learn_modules = []
+        args = {}
+
+        args['out'] = params['out']
+
+        # Define a parameter matrix W for each layer.
+        for l in range(params['layers']):
+            learn_args.append(nn.Parameter(torch.randn(params['in'][l], params['out'])))
+
+        # learn_modules.append(nn.Linear(params['out'], params['target']))
+
+        learn_modules.append(NNet(n_in=params['out'], n_out=params['target']))
+        return nn.ParameterList(learn_args), nn.ModuleList(learn_modules), args    
+    
     
     # Battaglia et al. (2016), Interaction Networks
     def r_intnet(self, h):

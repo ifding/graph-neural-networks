@@ -49,6 +49,10 @@ Train and test MPNN (default) and MPNNv2 model with GPU (default) or not:
         
     $ python3 main.py --datasetPath /scratch3/feid/mpnn-data/qm9/dsgdb9nsd/ --no-cuda --model MPNNv2
 
+    $ python3 main.py --datasetPath /scratch3/feid/mpnn-data/qm9/dsgdb9nsd/ --model MPNNv3
+        
+    $ python3 main.py --datasetPath /scratch3/feid/mpnn-data/qm9/dsgdb9nsd/ --no-cuda --model MPNNv3
+
 
 ## Bibliography
 

@@ -26,6 +26,7 @@ import utils
 from utils import datasets
 from models.MPNN import MPNN
 from models.MPNNv2 import MPNNv2
+from models.MPNNv3 import MPNNv3
 from utils.LogMetric import AverageMeter, Logger
 
 
@@ -68,7 +69,7 @@ parser.add_argument('--log-interval', type=int, default=20, metavar='N',
 parser.add_argument('--prefetch', type=int, default=2, help='Pre-fetching threads.')
 
 # Model modification
-parser.add_argument('--model', type=str,help='MPNN model name [MPNN, MPNNv2]',
+parser.add_argument('--model', type=str,help='MPNN model name [MPNN, MPNNv2, MPNNv3]',
                         default='MPNN')
 
 
@@ -134,10 +135,12 @@ def main(args):
     n_layers = 3
     l_target = len(l)
     type ='regression'
-    if args.model == 'MPNN':
-        model = MPNN(in_n, hidden_state_size, message_size, n_layers, l_target, type=type)
-    else:
+    if args.model == 'MPNNv2':
         model = MPNNv2(in_n, [5, 15, 15], [10, 20, 20], l_target, type=type)
+    elif args.model == 'MPNNv3':
+        model = MPNNv3([1, 2, 3, 4], in_n, [5, 15, 15], 30, l_target, type=type)
+    else:
+        model = MPNN(in_n, hidden_state_size, message_size, n_layers, l_target, type=type)
     del in_n, hidden_state_size, message_size, n_layers, l_target, type
 
     print('Optimizer')
